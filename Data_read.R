@@ -30,3 +30,8 @@ summary(MIC_RICH)
 ## Bacteria data 
 
 BACT <- read.csv(***REMOVED***)
+
+
+## Fungi data
+BLAST_m <- read.csv(***REMOVED***)
+BLAST_um <- read.csv(***REMOVED***)
