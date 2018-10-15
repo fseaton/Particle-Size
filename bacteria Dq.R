@@ -7,7 +7,6 @@ library(psych)
 
 #### bacteria data prep ####
 ## get data 
-BACT <- read.csv(***REMOVED***)
 dim(BACT)
 colnames(BACT)
 
@@ -115,8 +114,6 @@ pairs.panels(BACT_Dq[,1:11], method="spearman", rug=FALSE)
 
 ## Fungi ####
 ## data prep
-BLAST_m <- read.csv(***REMOVED***)
-BLAST_um <- read.csv(***REMOVED***)
 
 FUNGI <- rbind(BLAST_m, BLAST_um)
 colnames(FUNGI)
