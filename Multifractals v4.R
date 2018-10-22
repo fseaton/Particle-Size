@@ -551,9 +551,9 @@ ggplot(filter(Res_fil_mer, q==0), aes(x=Dq, y=BACT_R_RICH)) + geom_point(cex = 2
   facet_wrap(~Habitat)
 
 (b0 <- ggplot(filter(Res_fil_mer, q==0), aes(x=Dq, y=BACT_R_RICH)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+#  geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x="D0"))
+        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x=expression(D[0])))
 
 
 # Bacteria vs D1
@@ -568,9 +568,9 @@ ggplot(filter(Res_fil_mer, q==1), aes(x=Dq, y=BACT_R_RICH)) + geom_point(cex = 2
   facet_wrap(~Habitat)
 
 b1 <- ggplot(filter(Res_fil_mer, q==1), aes(x=Dq, y=BACT_R_RICH)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+#  geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x="D1")
+        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x=expression(D[1]))
 
 
 summary(lm(BACT_R_RICH ~ Dq*Habitat, filter(Res_fil_mer, q==1)))
@@ -593,27 +593,27 @@ ggplot(filter(Res_fil_mer, q==2), aes(x=Dq, y=BACT_R_RICH)) + geom_point(cex = 2
   facet_wrap(~Habitat) + geom_smooth(method="lm")
 
 b2 <- ggplot(filter(Res_fil_mer, q==2), aes(x=Dq, y=BACT_R_RICH)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+#  geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x="D2")
+        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x=expression(D[2]))
 
 summary(lm(BACT_R_RICH ~ Dq*Habitat, filter(Res_fil_mer, q==2)))
 
 ## Plots for paper ####
 f0 <- ggplot(filter(Res_fil_mer, q==0), aes(x=Dq, y=FUNG_R_RICH_BLAST)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+ # geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x="D0")
+        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x=expression(D[0]))
 
 f1 <- ggplot(filter(Res_fil_mer, q==1), aes(x=Dq, y=FUNG_R_RICH_BLAST)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+ # geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x="D1")
+        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x=expression(D[1]))
 
 f2 <- ggplot(filter(Res_fil_mer, q==2), aes(x=Dq, y=FUNG_R_RICH_BLAST)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+ # geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x="D2")
+        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x=expression(D[2]))
 
 library(gridExtra)
 grid.arrange(b0,b1,b2,f0,f1,f2, ncol = 3)
@@ -623,23 +623,23 @@ ggsave("Bacteria Fungi D parameters.pdf", plot=arrangeGrob(b0,b1,b2,f0,f1,f2, nc
        device = "pdf", path = "./Graphs/", width=30, height = 20, units="cm")
 
 b01 <- ggplot(Res_fil_mer_wideD, aes(x=D1_D0, y=BACT_R_RICH)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+ # geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x="D1/D0")
+        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x=expression(D[1]/D[0]))
 b12 <- ggplot(Res_fil_mer_wideD, aes(x=D2_D1, y=BACT_R_RICH)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+#  geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x="D2/D1")
+        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x=expression(D[2]/D[1]))
 
 f01 <- ggplot(Res_fil_mer_wideD, aes(x=D1_D0, y=FUNG_R_RICH_BLAST)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+ # geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x="D1/D0")
+        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x=expression(D[1]/D[0]))
 
 f12 <- ggplot(Res_fil_mer_wideD, aes(x=D2_D1, y=FUNG_R_RICH_BLAST)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+ # geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x="D2/D1")
+        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x=expression(D[2]/D[1]))
 grid.arrange(b01,b12,f01,f12, ncol = 2)
 ggsave("Bacteria Fungi D ratios lm.png", plot=arrangeGrob(b01,b12,f01,f12, ncol = 2),
        device = "png", path = "./Graphs/", width=20, height = 20, units="cm")
