@@ -204,6 +204,52 @@ Res_fil_wide <- Result_filrsq %>% select(REP_ID, q, Dq) %>%
   filter(q %in% -5:5) %>%
   spread(key=q, value=Dq)
 
+Res_fil_wide_cor_dt <- select(GMEP, REP_ID, X0.0438996:SAND) %>% merge(Res_fil_wide, by="REP_ID")
+cor <- rcorr(as.matrix(Res_fil_wide_cor_dt[,2:131]), type="spearman")
+n <- 130
+0.05/(n*n-n) #2.981515e-06
+corsel <- cor$P < 2.981515e-06
+cor2 <- matrix(nrow=n,ncol=n)
+for (i in 1:n){
+  for (j in 1:n){
+    ifelse(is.na(corsel[i,j]), cor2[i,j] <- NA, 
+           ifelse(corsel[i,j]==F, cor2[i,j] <- NA,cor2[i,j] <- cor$r[i,j]))
+  }
+}
+cor2
+
+colnames(cor2) <- colnames(Res_fil_wide_cor_dt)[2:131]
+rownames(cor2) <- colnames(Res_fil_wide_cor_dt)[2:131]
+colnames(cor2)
+
+Size <- as.numeric(matrix(unlist(strsplit(colnames(cor2)[1:116],"X")), ncol=2, byrow=T)[,2])
+Sizelab <- as.character(signif(Size,2))
+qlab <- paste("q",colnames(cor2)[120:130], sep="=")
+labs <- c(Sizelab, colnames(cor2)[117:119], qlab)
+
+palette <- colorRampPalette(colors = c("firebrick1","lightgoldenrod1","dodgerblue1"))
+col <- c(palette(116),"firebrick1", "lightgoldenrod1","dodgerblue1",
+         rep("hotpink",11))
+shp <- c(rep("circle", 116), rep("triangle", 3), rep("square", 11))
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp)
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp, filetype="png", 
+       filename=paste("PSD network Bonferroni multifractals colour gradient",Sys.Date(),sep=" "), 
+       width=20, height=16)
+
+corsel <- abs(cor$r) > 0.5
+cor2 <- matrix(nrow=n,ncol=n)
+for (i in 1:n){
+  for (j in 1:n){
+    ifelse(is.na(corsel[i,j]), cor2[i,j] <- NA, 
+           ifelse(corsel[i,j]==F, cor2[i,j] <- NA,cor2[i,j] <- cor$r[i,j]))
+  }
+}
+cor2
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp)
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp, filetype="png", 
+       filename=paste("PSD network r 0.5 multifractals colour gradient",Sys.Date(),sep=" "), 
+       width=20, height=16, vsize = 2)
+
 # logratio transform of compositional data
 GMEP_comp <- select(GMEP, REP_ID, X0.0438996:X2000)
 colnames(GMEP_comp)
