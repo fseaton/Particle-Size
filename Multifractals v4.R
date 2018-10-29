@@ -309,10 +309,10 @@ labs <- c(colnames(cor2)[1:3], Sizelab, qlab)
 palette <- colorRampPalette(colors = c("firebrick1","lightgoldenrod1","dodgerblue1"))
 col <- c("firebrick1", "lightgoldenrod1","dodgerblue1",palette(115),
          rep("hotpink",11))
-shp <- c(rep("diamond", 3), rep("circle", 115), rep("square", 11))
+shp <- c(rep("triangle", 3), rep("circle", 115), rep("square", 11))
 qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp)
-qgraph(cor2, layout="spring", labels=labs, color=col, filetype="png", 
-       filename=paste("PSD network Bonferroni multifractals colour gradient",Sys.Date(),sep=" "), 
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp, filetype="png", 
+       filename=paste("PSD network Bonferroni multifractals colour gradient logratio",Sys.Date(),sep=" "), 
        width=20, height=16)
 
 corsel <- abs(cor$r) > 0.5
