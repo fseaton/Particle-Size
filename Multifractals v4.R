@@ -204,10 +204,21 @@ Res_fil_wide <- Result_filrsq %>% select(REP_ID, q, Dq) %>%
   filter(q %in% -5:5) %>%
   spread(key=q, value=Dq)
 
-Res_fil_wide_cor_dt <- select(GMEP, REP_ID, X0.0438996:SAND) %>% merge(Res_fil_wide, by="REP_ID")
+# logratio transform of compositional data
+GMEP_comp <- select(GMEP, REP_ID, X0.0438996:X2000)
+colnames(GMEP_comp)
+summary(GMEP_comp)
+min(GMEP_comp[GMEP_comp>0], na.rm = TRUE) #0.0001
+GMEP_comp <- apply(GMEP_comp[,3:117], 2, function(x) log((x + 1e-20)/(GMEP_comp[,2] + 1e-20)))
 
-cor <- rcorr(as.matrix(Res_fil_wide_cor_dt[,2:131]), type="spearman")
-n <- 130
+GMEP_comp <- as.data.frame(GMEP_comp)
+GMEP_comp$REP_ID <- GMEP$REP_ID
+
+Res_fil_wide_cor_dt <- select(GMEP_comp, REP_ID, X0.0481915:X2000) %>% merge(Res_fil_wide, by="REP_ID")
+Res_fil_wide_cor_dt <- select(GMEP, REP_ID, CLAY:SAND) %>% merge(Res_fil_wide_cor_dt, by="REP_ID")
+
+cor <- rcorr(as.matrix(Res_fil_wide_cor_dt[,2:130]), type="spearman")
+n <- 129
 0.05/(n*n-n) #2.981515e-06
 corsel <- cor$P < 2.981515e-06
 cor2 <- matrix(nrow=n,ncol=n)
@@ -219,10 +230,10 @@ for (i in 1:n){
 }
 cor2
 
-colnames(cor2) <- colnames(Res_fil_wide_cor_dt)[2:131]
-rownames(cor2) <- colnames(Res_fil_wide_cor_dt)[2:131]
+colnames(cor2) <- colnames(Res_fil_wide_cor_dt)[2:130]
+rownames(cor2) <- colnames(Res_fil_wide_cor_dt)[2:130]
 colnames(cor2)
-cor2[120:130,c("CLAY","SILT","SAND")] ##find correlations between MF and SSC only
+cor2[119:129,c("CLAY","SILT","SAND")] ##find correlations between MF and SSC only
 #          CLAY       SILT       SAND
 # -5  0.6297889         NA -0.3316516
 # -4  0.6269396         NA -0.3281596
