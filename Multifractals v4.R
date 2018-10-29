@@ -255,18 +255,27 @@ GMEP_comp <- select(GMEP, REP_ID, X0.0438996:X2000)
 colnames(GMEP_comp)
 summary(GMEP_comp)
 min(GMEP_comp[GMEP_comp>0], na.rm = TRUE) #0.0001
-GMEP_comp <- apply(GMEP_comp[,3:117], 2, function(x) log((x + 1e-20)/(GMEP_comp[,2] + 1e-20)))
+
+# remove column with min > 0 for this calculation
+set.seed(291018)
+sample(colnames(GMEP_comp)[2:117], 1) #"X146.815" min = 0
+sample(colnames(GMEP_comp)[2:117], 1) #"X0.0768275" min = 0
+sample(colnames(GMEP_comp)[2:117], 1) #"X14.2573" min = 0.0206
+
+comp_vec <- GMEP_comp[,"X14.2573"]
+GMEP_comp <- select(GMEP_comp, -X14.2573)
+GMEP_comp <- apply(GMEP_comp[,2:116], 2, function(x) log((x + 1e-20)/comp_vec))
 
 GMEP_comp <- as.data.frame(GMEP_comp)
 GMEP_comp$REP_ID <- GMEP$REP_ID
 
-Res_fil_wide_cor_dt <- select(GMEP_comp, REP_ID, X0.0481915:X2000) %>% merge(Res_fil_wide, by="REP_ID")
+Res_fil_wide_cor_dt <- select(GMEP_comp, REP_ID, X0.0438996:X2000) %>% merge(Res_fil_wide, by="REP_ID")
 Res_fil_wide_cor_dt <- select(GMEP, REP_ID, CLAY:SAND) %>% merge(Res_fil_wide_cor_dt, by="REP_ID")
 
 cor <- rcorr(as.matrix(Res_fil_wide_cor_dt[,2:130]), type="spearman")
 n <- 129
 0.05/(n*n-n) #2.981515e-06
-corsel <- cor$P < 2.981515e-06
+corsel <- cor$P < 0.05/(n*n-n)
 cor2 <- matrix(nrow=n,ncol=n)
 for (i in 1:n){
   for (j in 1:n){
