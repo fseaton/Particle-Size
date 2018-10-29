@@ -270,17 +270,24 @@ for (i in 1:n){
 }
 cor2
 qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp)
-qgraph(cor2, layout="spring", labels=labs, color=col, filetype="png", 
-       filename=paste("PSD network r 0.5 multifractals colour gradient",Sys.Date(),sep=" "), 
+qgraph(cor2, layout="spring", labels=labs, color=col, shape =shp, filetype="pdf", 
+       filename=paste("PSD network r 0.5 multifractals colour gradient logratio",Sys.Date(),sep=" "), 
        width=20, height=16, vsize = 2)
 
 library(igraph)
-cor_pos <- ifelse(cor2 > 0, cor$r, 0)
+cor_pos <- ifelse(cor$r > 0, cor$r, 0)
 cor_pos <- ifelse(cor$P < 2.981515e-06, cor_pos, 0)
+qgraph(cor_pos, layout = "spring", labels = labs, color = col, shape = shp)
+qgraph(cor_pos, layout="spring", labels=labs, color=col, shape =shp, filetype="png", 
+       filename=paste("PSD network bonferroni multifractals colour gradient logratio positive only",Sys.Date(),sep=" "), 
+       width=20, height=16, vsize = 2)
 cor_pos <- cor_pos[4:118,4:118] # remove multifractals and summary values
 colnames(cor_pos)
 qgraph(cor_pos, layout = "spring")
+
 graph <- graph_from_adjacency_matrix(cor_pos, mode="undirected", weighted = TRUE)
+plot(graph)
+graph <- simplify(graph) #remove self loops and multiple edges
 plot(graph)
 
 clusters.eb <- cluster_edge_betweenness(graph) #warning about modularity treating links as similarities but eb treating as distances
@@ -291,34 +298,36 @@ membership(cluster.wt)
 
 cluster.sg <- cluster_spinglass(graph)
 membership(cluster.sg)
+sizes(cluster.sg)
+# Community sizes
+# 1  2  3  4 
+# 48 65  1  1 
 
 membership(cluster.wt)
-# X0.0438996 X0.0481915 X0.0529029 X0.0580749 X0.0637526 X0.0699854 X0.0768275 X0.0843385 X0.0925838  X0.101635  X0.111572  X0.122479 
-# 3          3          3          3          3          3          3          3          3          3          3          3 
-# X0.134454  X0.147598  X0.162028  X0.177869  X0.195258  X0.214348  X0.235303  X0.258308  X0.283561  X0.311283  X0.341716  X0.375124 
-# 2          2          2          2          2          2          2          2          2          2          2          2 
-# X0.411798  X0.452057  X0.496252  X0.544768  X0.598027  X0.656493  X0.720675  X0.791132  X0.868477  X0.953383   X1.04659   X1.14891 
-# 2          2          2          2          2          2          2          2          2          2          2          2 
-# X1.26123   X1.38454    X1.5199   X1.66849   X1.83161   X2.01068   X2.20725   X2.42304   X2.65993   X2.91998   X3.20545   X3.51883 
-# 2          2          2          2          2          2          2          2          2          2          2          2 
-# X3.86284   X4.24049   X4.65506   X5.11017   X5.60976    X6.1582   X6.76025   X7.42117   X8.14669   X8.94315   X9.81748   X10.7773 
-# 2          2          2          2          2          2          2          2          2          2          2          2 
-# X11.8309   X12.9876   X14.2573   X15.6512   X17.1813    X18.861    X20.705   X22.7292   X24.9513   X27.3906   X30.0685   X33.0081 
-# 2          2          2          2          2          2          2          2          3          3          3          3 
-# X36.2352   X39.7777   X43.6665   X47.9356    X52.622   X57.7666   X63.4141   X69.6138   X76.4196   X83.8907   X92.0923   X101.096 
-# 3          3          3          3          3          3          1          1          1          1          1          1 
-# X110.979   X121.829    X133.74   X146.815   X161.168   X176.925   X194.222    X213.21   X234.054   X256.936   X282.056   X309.631 
-# 1          1          1          1          1          1          1          1          1          1          1          1 
-# X339.902   X373.132   X409.611   X449.657   X493.617   X541.876   X594.852   X653.008   X716.849   X786.932   X863.866   X948.322 
-# 1          1          1          1          1          1          1          1          1          1          1          1 
-# X1041.03   X1142.81   X1254.54   X1377.19   X1511.83   X1659.63   X1821.88      X2000 
-# 1          1          1          1          1          1          1          1
+# X0.0438996 X0.0481915 X0.0529029 X0.0580749 X0.0637526 X0.0699854 X0.0768275 X0.0843385 X0.0925838  X0.101635  X0.111572  X0.122479  X0.134454 
+# 2          2          2          2          2          2          2          2          2          2          2          2          2 
+# X0.147598  X0.162028  X0.177869  X0.195258  X0.214348  X0.235303  X0.258308  X0.283561  X0.311283  X0.341716  X0.375124  X0.411798  X0.452057 
+# 1          1          1          1          1          1          1          1          1          1          1          1          1 
+# X0.496252  X0.544768  X0.598027  X0.656493  X0.720675  X0.791132  X0.868477  X0.953383   X1.04659   X1.14891   X1.26123   X1.38454    X1.5199 
+# 1          1          1          1          1          1          1          1          1          1          1          1          1 
+# X1.66849   X1.83161   X2.01068   X2.20725   X2.42304   X2.65993   X2.91998   X3.20545   X3.51883   X3.86284   X4.24049   X4.65506   X5.11017 
+# 1          1          1          1          1          1          1          1          1          1          1          1          1 
+# X5.60976    X6.1582   X6.76025   X7.42117   X8.14669   X8.94315   X9.81748   X10.7773   X11.8309   X12.9876   X15.6512   X17.1813    X18.861 
+# 1          1          1          1          1          1          1          1          1          1          2          2          2 
+# X20.705   X22.7292   X24.9513   X27.3906   X30.0685   X33.0081   X36.2352   X39.7777   X43.6665   X47.9356    X52.622   X57.7666   X63.4141 
+# 2          2          2          2          2          2          2          2          2          2          2          2          2 
+# X69.6138   X76.4196   X83.8907   X92.0923   X101.096   X110.979   X121.829    X133.74   X146.815   X161.168   X176.925   X194.222    X213.21 
+# 2          2          2          2          2          2          2          2          2          2          2          2          2 
+# X234.054   X256.936   X282.056   X309.631   X339.902   X373.132   X409.611   X449.657   X493.617   X541.876   X594.852   X653.008   X716.849 
+# 2          2          2          2          2          2          2          2          2          2          2          2          2 
+# X786.932   X863.866   X948.322   X1041.03   X1142.81   X1254.54   X1377.19   X1511.83   X1659.63   X1821.88      X2000 
+# 2          2          2          2          2          2          2          2          2          2          2 
 modularity(cluster.wt)
-# [1] 0.4138004
+# [1] 0.4785825
 sizes(cluster.wt)
 # Community sizes
-# 1  2  3 
-# 38 56 22 
+# 1  2 
+# 49 66
 ## spinglass can deal with negative weights
 graph.neg <- graph_from_adjacency_matrix(cor$r[1:116,1:116], mode = "undirected", weighted = TRUE)
 
