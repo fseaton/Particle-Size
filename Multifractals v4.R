@@ -246,15 +246,16 @@ cor2[119:129,c("CLAY","SILT","SAND")] ##find correlations between MF and SSC onl
 # 3          NA -0.2942029  0.3707512
 # 4          NA -0.2587706  0.3210079
 # 5          NA         NA  0.2850174
-Size <- as.numeric(matrix(unlist(strsplit(colnames(cor2)[1:116],"X")), ncol=2, byrow=T)[,2])
+Size <- as.numeric(matrix(unlist(strsplit(colnames(cor2)[4:118],"X")), ncol=2, byrow=T)[,2])
 Sizelab <- as.character(signif(Size,2))
-qlab <- paste("q",colnames(cor2)[120:130], sep="=")
-labs <- c(Sizelab, colnames(cor2)[117:119], qlab)
+qlab <- paste("q",colnames(cor2)[119:129], sep="=")
+labs <- c(colnames(cor2)[1:3], Sizelab, qlab)
 
 palette <- colorRampPalette(colors = c("firebrick1","lightgoldenrod1","dodgerblue1"))
-col <- c(palette(116),"firebrick1", "lightgoldenrod1","dodgerblue1",
+col <- c("firebrick1", "lightgoldenrod1","dodgerblue1",palette(115),
          rep("hotpink",11))
-qgraph(cor2, layout="spring", labels=labs, color=col)
+shp <- c(rep("diamond", 3), rep("circle", 115), rep("square", 11))
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp)
 qgraph(cor2, layout="spring", labels=labs, color=col, filetype="png", 
        filename=paste("PSD network Bonferroni multifractals colour gradient",Sys.Date(),sep=" "), 
        width=20, height=16)
@@ -268,15 +269,16 @@ for (i in 1:n){
   }
 }
 cor2
-qgraph(cor2, layout="spring", labels=labs, color=col)
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp)
 qgraph(cor2, layout="spring", labels=labs, color=col, filetype="png", 
        filename=paste("PSD network r 0.5 multifractals colour gradient",Sys.Date(),sep=" "), 
        width=20, height=16, vsize = 2)
 
-
+library(igraph)
 cor_pos <- ifelse(cor2 > 0, cor$r, 0)
 cor_pos <- ifelse(cor$P < 2.981515e-06, cor_pos, 0)
-cor_pos <- cor_pos[1:116,1:116] # remove multifractals and summary values
+cor_pos <- cor_pos[4:118,4:118] # remove multifractals and summary values
+colnames(cor_pos)
 qgraph(cor_pos, layout = "spring")
 graph <- graph_from_adjacency_matrix(cor_pos, mode="undirected", weighted = TRUE)
 plot(graph)
