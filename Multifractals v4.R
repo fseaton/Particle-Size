@@ -324,8 +324,11 @@ for (i in 1:n){
   }
 }
 cor2
-qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp)
-qgraph(cor2, layout="spring", labels=labs, color=col, shape =shp, filetype="pdf", 
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp, posCol = rgb(86,180,233,maxColorValue = 255),
+       negCol = rgb(213,94,0,maxColorValue = 255))
+qgraph(cor2, layout="spring", labels=labs, color=col, shape =shp, filetype="pdf",
+       posCol = rgb(86,180,233,maxColorValue = 255),
+       negCol = rgb(213,94,0,maxColorValue = 255),
        filename=paste("PSD network r 0.5 multifractals colour gradient logratio",Sys.Date(),sep=" "), 
        width=20, height=16, vsize = 2)
 
