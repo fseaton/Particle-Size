@@ -396,9 +396,9 @@ membership(clus2.sg)
 
 ## Soil texture ternary diagram ####
 library(soiltexture)
-TT.plot(tri.data = Res_fil_wide_cor_dt, main = "Texture classes",
+TT.plot(tri.data = GMEP, main = NA,
         text.sum = 100, base.css.ps.lim = c(0,2.2,63,2000),
-        class.sys = "UK.SSEW.TT", pch=16, frame.bg.col = "white", grid.col = "gray90",
+        class.sys = "UK.SSEW.TT", pch=16, frame.bg.col = "white", grid.col = "white",
         class.lab.col = "gray60", class.line.col	= "gray50", cex=0.7)
 
 ### Comparison to other data ####
@@ -723,6 +723,8 @@ f12 <- ggplot(Res_fil_mer_wideD, aes(x=D2_D1, y=FUNG_R_RICH_BLAST)) + geom_point
 grid.arrange(b01,b12,f01,f12, ncol = 2)
 ggsave("Bacteria Fungi D ratios lm.png", plot=arrangeGrob(b01,b12,f01,f12, ncol = 2),
        device = "png", path = "./Graphs/", width=20, height = 20, units="cm")
+ggsave("Bacteria Fungi D ratios lm.pdf", plot=arrangeGrob(b01,b12,f01,f12, ncol = 2),
+       device = "pdf", path = "./Graphs/", width=20, height = 20, units="cm")
 
 
 b01 <- ggplot(Res_fil_mer_wideD, aes(x=D1_D0, y=BACT_R_RICH)) + geom_point(cex = 2) + 
@@ -742,6 +744,8 @@ f12 <- ggplot(Res_fil_mer_wideD, aes(x=D2_D1, y=FUNG_R_RICH_BLAST)) + geom_point
 grid.arrange(b01,b12,f01,f12, ncol = 2)
 ggsave("Bacteria Fungi D ratios.png", plot=arrangeGrob(b01,b12,f01,f12, ncol = 2),
        device = "png", path = "./Graphs/", width=20, height = 20, units="cm")
+ggsave("Bacteria Fungi D ratios.pdf", plot=arrangeGrob(b01,b12,f01,f12, ncol = 2),
+       device = "pdf", path = "./Graphs/", width=20, height = 20, units="cm")
 
 ## Models ####
 BACT_res <- resid(lm(BACT_R_RICH ~ C_B_PH_CACL2 + C_FE_CTOTAL, filter(Res_fil_mer, q==1)))
