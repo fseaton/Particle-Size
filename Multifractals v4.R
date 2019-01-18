@@ -27,7 +27,29 @@ library(Matrix)
 library(gridExtra)
 
 ## get data ####
-summary(GMEP)
+summary(GMEP) # this contains the PSD data, along with some ancillary data
+# format of GMEP is:
+str(GMEP)
+# 'data.frame':	393 obs. of  127 variables:
+# $ REP_ID    : Factor w/ 365 levels "10170X1","10170X4",..: 1 2 3 4 4 5 6 7 8 9 ...
+# $ SQNUM     : int  10170 10170 10170 10412 10412 10412 10412 10498 10498 10498 ...
+# $ PLOTNUM   : int  1 4 5 1 1 3 4 1 2 3 ...
+# $ REPEATED  : int  NA NA NA 1 2 NA NA NA NA NA ...
+# $ YEAR      : int  2014 2014 2014 2014 2014 2014 2014 2013 2013 2013 ...
+# $ BATCH     : int  5 5 5 5 5 5 5 1 1 1 ...
+# $ X0.03999  : int  0 0 0 0 0 0 0 0 0 0 ...
+# $ X0.0438996: num  0.001962 0.001801 0.000396 0.000879 0.000948 ...
+# $ X0.0481915: num  0.002478 0.002286 0.000573 0.001129 0.001215 ...
+# $ X0.0529029: num  0.00392 0.00368 0.00116 0.00187 0.002 ...
+# ...
+# $ X1511.83: num  0.0409 0.0097 0.0217 0.1901 0.174 ...
+# $ X1659.63: num  0.004 0 0.0015 0.0207 0.0187 ...
+# $ X1821.88: num  0 0 0 0 0 ...
+# $ X2000   : num  0 0 0 0 0 ...
+# $ CLAY    : num  24.2 27.7 25.4 20.6 20.6 ...
+# $ SILT    : num  49 52.8 54.1 47.6 48.4 ...
+# $ SAND    : num  26.8 19.5 20.5 31.9 31 ...
+# $ TOTAL   : num  100 100 100 100 100 100 100 100 100 100 ...
 apply(GMEP, 2, anyNA)
 GMEP[is.na(GMEP)] <- 0
 summary(GMEP)
@@ -109,6 +131,7 @@ Result <- data.frame(REP_ID = character(0),
                      falpha = character(0))
 
 ## Actual calculation ####
+# this loop takes 22 seconds for me, haven't bothered optimising
 for (i in 1:nrow(PSD)){
   ## for every rep cut data
   Data.vec <- PSD[i,] # select one rep's worth of data
@@ -133,6 +156,7 @@ for (i in 1:nrow(PSD)){
   Result <- rbind(Result, Res.temp)
   
 }
+# many warnings that model fit is essentially perfect, not a problem for what we're doing
 View(Result)
 dim(Result)
 # 17085 6
@@ -167,6 +191,10 @@ hist(filter(Result, Rsq<0.8)[,2])
 
 Result_filrsq <- filter(Result, Rsq > 0.9 | is.na(Rsq))
 summary(Result_filrsq)
+
+# plot out the different distributions for every sample. This prints to pdf in a way that is specific to
+# my dataset. Probably want to alter the height of the pdf and the number of rows if you're doing this
+# on your own data
 REPS_unique <- unique(Result_filrsq$REP_ID)
 
 pdf("Dq against q v2.pdf", width=7, height=147)
@@ -199,16 +227,19 @@ dev.off()
 library(qgraph)
 library(Hmisc)
 
+# only look at correlations of the Dqs that are integers between -5 and 5
 summary(Result_filrsq)
 Res_fil_wide <- Result_filrsq %>% select(REP_ID, q, Dq) %>%
   filter(q %in% -5:5) %>%
   spread(key=q, value=Dq)
 
-Res_fil_wide_cor_dt <- select(GMEP, REP_ID, X0.0438996:SAND) %>% merge(Res_fil_wide, by="REP_ID")
-cor <- rcorr(as.matrix(Res_fil_wide_cor_dt[,2:131]), type="spearman")
-n <- 130
-0.05/(n*n-n) #2.981515e-06
-corsel <- cor$P < 2.981515e-06
+Res_fil_wide_cor_dt <- select(GMEP, REP_ID, X0.0438996:SAND) %>% merge(Res_fil_wide, by="REP_ID") #select all the data 
+cor <- rcorr(as.matrix(Res_fil_wide_cor_dt[,2:131]), type="spearman") # calculate spearman rank correlations
+n <- 130 # number of variables in correlation matrix
+0.05/(n*n-n) #2.981515e-06 # calculate number of comparisons for Bonferroni correction
+corsel <- cor$P < 2.981515e-06 # create binary matrix for selection of "significant" comparisons
+# use binary selection matrix to create new correlation network with only the rho values of the 
+# significant correlations. Bit clunky, but shouldn't take long with n = 130
 cor2 <- matrix(nrow=n,ncol=n)
 for (i in 1:n){
   for (j in 1:n){
@@ -222,6 +253,7 @@ colnames(cor2) <- colnames(Res_fil_wide_cor_dt)[2:131]
 rownames(cor2) <- colnames(Res_fil_wide_cor_dt)[2:131]
 colnames(cor2)
 
+# create graphical parameters
 Size <- as.numeric(matrix(unlist(strsplit(colnames(cor2)[1:116],"X")), ncol=2, byrow=T)[,2])
 Sizelab <- as.character(signif(Size,2))
 qlab <- paste("q",colnames(cor2)[120:130], sep="=")
@@ -231,11 +263,14 @@ palette <- colorRampPalette(colors = c("firebrick1","lightgoldenrod1","dodgerblu
 col <- c(palette(116),"firebrick1", "lightgoldenrod1","dodgerblue1",
          rep("hotpink",11))
 shp <- c(rep("circle", 116), rep("triangle", 3), rep("square", 11))
+
+# plot correlation matrix as network using qgraph package
 qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp)
 qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp, filetype="png", 
        filename=paste("PSD network Bonferroni multifractals colour gradient",Sys.Date(),sep=" "), 
        width=20, height=16)
 
+# only plot the correlations with rho > 0.5
 corsel <- abs(cor$r) > 0.5
 cor2 <- matrix(nrow=n,ncol=n)
 for (i in 1:n){
@@ -250,6 +285,7 @@ qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp, filetype="png
        filename=paste("PSD network r 0.5 multifractals colour gradient",Sys.Date(),sep=" "), 
        width=20, height=16, vsize = 2)
 
+# THIS IS THE VERSION YOU SHOULD USE ####
 # logratio transform of compositional data
 GMEP_comp <- select(GMEP, REP_ID, X0.0438996:X2000)
 colnames(GMEP_comp)
@@ -269,13 +305,14 @@ GMEP_comp <- apply(GMEP_comp[,2:116], 2, function(x) log((x + 1e-20)/comp_vec))
 GMEP_comp <- as.data.frame(GMEP_comp)
 GMEP_comp$REP_ID <- GMEP$REP_ID
 
+# use logratio transformed data for network construction
 Res_fil_wide_cor_dt <- select(GMEP_comp, REP_ID, X0.0438996:X2000) %>% merge(Res_fil_wide, by="REP_ID")
 Res_fil_wide_cor_dt <- select(GMEP, REP_ID, CLAY:SAND) %>% merge(Res_fil_wide_cor_dt, by="REP_ID")
 
+# calculate spearman rank correlation
 cor <- rcorr(as.matrix(Res_fil_wide_cor_dt[,2:130]), type="spearman")
-n <- 129
-0.05/(n*n-n) #2.981515e-06
-corsel <- cor$P < 0.05/(n*n-n)
+n <- 129 # number of variables
+corsel <- cor$P < 0.05/(n*n-n) # create binary selection matrix using Bonferroni assessed significance
 cor2 <- matrix(nrow=n,ncol=n)
 for (i in 1:n){
   for (j in 1:n){
@@ -301,6 +338,8 @@ cor2[119:129,c("CLAY","SILT","SAND")] ##find correlations between MF and SSC onl
 # 3          NA -0.2942029  0.3707512
 # 4          NA -0.2587706  0.3210079
 # 5          NA         NA  0.2850174
+
+# create graphical parameters
 Size <- as.numeric(matrix(unlist(strsplit(colnames(cor2)[4:118],"X")), ncol=2, byrow=T)[,2])
 Sizelab <- as.character(signif(Size,2))
 qlab <- paste("q",colnames(cor2)[119:129], sep="=")
@@ -310,11 +349,14 @@ palette <- colorRampPalette(colors = c("firebrick1","lightgoldenrod1","dodgerblu
 col <- c("firebrick1", "lightgoldenrod1","dodgerblue1",palette(115),
          rep("hotpink",11))
 shp <- c(rep("triangle", 3), rep("circle", 115), rep("square", 11))
+
+# plot correlation matrix as a network
 qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp)
 qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp, filetype="png", 
        filename=paste("PSD network Bonferroni multifractals colour gradient logratio",Sys.Date(),sep=" "), 
        width=20, height=16)
 
+# select only correlations with rho > 0.5
 corsel <- abs(cor$r) > 0.5
 cor2 <- matrix(nrow=n,ncol=n)
 for (i in 1:n){
@@ -324,6 +366,8 @@ for (i in 1:n){
   }
 }
 cor2
+
+# plot as network
 qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp, posCol = rgb(86,180,233,maxColorValue = 255),
        negCol = rgb(213,94,0,maxColorValue = 255))
 qgraph(cor2, layout="spring", labels=labs, color=col, shape =shp, filetype="pdf",
@@ -332,6 +376,7 @@ qgraph(cor2, layout="spring", labels=labs, color=col, shape =shp, filetype="pdf"
        filename=paste("PSD network r 0.5 multifractals colour gradient logratio",Sys.Date(),sep=" "), 
        width=20, height=16, vsize = 2)
 
+# use positive correlations only to create network in igraph and find clusters of related nodes
 library(igraph)
 cor_pos <- ifelse(cor$r > 0, cor$r, 0)
 cor_pos <- ifelse(cor$P < 2.981515e-06, cor_pos, 0)
@@ -348,6 +393,8 @@ plot(graph)
 graph <- simplify(graph) #remove self loops and multiple edges
 plot(graph)
 
+# multiple algorithms could be used for detecting clusters. I've tried out a couple here but I think
+# walktrap suits this kind of data best
 clusters.eb <- cluster_edge_betweenness(graph) #warning about modularity treating links as similarities but eb treating as distances
 membership(clusters.eb)
 
@@ -386,6 +433,8 @@ sizes(cluster.wt)
 # Community sizes
 # 1  2 
 # 49 66
+
+
 ## spinglass can deal with negative weights
 graph.neg <- graph_from_adjacency_matrix(cor$r[1:116,1:116], mode = "undirected", weighted = TRUE)
 
@@ -412,7 +461,7 @@ BH_PSD <- droplevels(BH_PSD)
 summary(BH_PSD$BH)
 
 
-## arable ####
+## plot multifractal spectra for arable sites ####
 Arable_reps <- as.character(filter(BH_PSD, BH == "Arable and horticultural")$REP_ID)
 
 
@@ -424,6 +473,7 @@ Arable_PSD <- select(Soil, REP_ID, C_FE_CTOTAL, C_B_PH_CACL2, TOTAL_MITES, TOTAL
   merge(Arable_PSD, by="REP_ID", all.y=T)
 summary(Arable_PSD)
 
+# plots of multifractal spectra (Dq ~ q) coloured by environmental variables
 d1 <- ggplot(Arable_PSD, aes(x=q, y=Dq, group=REP_ID, col=C_FE_CTOTAL)) + geom_line(lwd=1.5) +
   scale_color_gradient(low="#a1dab4", high="#253494",name="Carbon") + 
   theme(text = element_text(size=15, colour = "black"),
