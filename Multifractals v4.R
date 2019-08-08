@@ -527,8 +527,8 @@ grid.arrange(f1,f2,f3,f4)
 summary(BH_PSD$BH)
 BH_PSD$Habitat <- recode_factor(BH_PSD$BH,
                                 "Arable and horticultural" = "Arable",
-                                "Improved Grassland" = "Impr Grass",
-                                "Neutral Grassland" = "Neutr Grass",
+                                "Improved Grassland" = "Improved Grass",
+                                "Neutral Grassland" = "Neutral Grass",
                                 "Acid Grassland" = "Acid Grass",
                                 "Broadleaved, mixed and yew woodland" = "Broadleaved",
                                 "Coniferous Woodland" = "Conifer",
@@ -536,7 +536,7 @@ BH_PSD$Habitat <- recode_factor(BH_PSD$BH,
                                 "Bracken" = "Heath",
                                 "Dwarf Shrub Heath" = "Heath",
                                 "Bog" = "Heath",
-                                "Calcareous Grassland" = "Impr Grass",
+                                "Calcareous Grassland" = "Improved Grass",
                                 "Supra-littoral rock" = "Other",
                                 "Supra-littoral sediment" = "Other")
 summary(BH_PSD$Habitat)
@@ -552,9 +552,9 @@ Res_fil_mer <- Res_fil_mer[!is.na(Res_fil_mer$Habitat),]
 
 ## simple plots by habitat
 ## Dq vs q
-ggplot(Res_fil_mer, aes(x=q, y=Dq, group=REP_ID)) + geom_line(alpha=0.2) + 
-  facet_wrap(~Habitat)
-ggsave("Dq vs q by habitat.png", device = "png")
+ggplot(Res_fil_mer, aes(x=q, y=Dq, group=REP_ID)) + geom_line(alpha=0.2, lwd = 1.5, color = "dodgerblue") + 
+  facet_wrap(~Habitat, nrow = 2) + theme(text = element_text(size=20), axis.text = element_text(colour = "black"))
+ggsave("Dq vs q by habitat wide.png", device = "png", path = "./Graphs/", width = 30, heigh = 12, units = "cm")
 
 ggplot(Res_fil_mer, aes(x=q, y=Dq, group=REP_ID)) + geom_line(alpha=0.2) + 
   facet_wrap(~Habitat) + scale_x_continuous(limits = c(-0.5,2.5)) + scale_y_continuous(limits = c(0,2))
@@ -594,18 +594,18 @@ ggsave("Dq vs q by invert.png", device = "png")
 
 ### Violin plots of D0, D1 and D2 by habitat
 v1 <- ggplot(filter(Res_fil_mer, q==0), aes(x=Habitat, y=Dq)) + geom_violin(fill="#6CA6CD") +
-  labs(y="D0", x="")
+  labs(y="D0", x="") + theme(text = element_text(size=20), axis.text = element_text(color = "black"))
 summary(lm(Dq ~ Habitat, filter(Res_fil_mer, q==0))) #R2 = 0.03981, p = 0.03994
 
 v2 <- ggplot(filter(Res_fil_mer, q==1), aes(x=Habitat, y=Dq)) + geom_violin(fill="#FF6A6A") +
-  labs(y="D1", x="")
+  labs(y="D1", x="") + theme(text = element_text(size=20), axis.text = element_text(color = "black"))
 summary(lm(Dq ~ Habitat, filter(Res_fil_mer, q==1))) #R2 = 0.02495, p = 0.2229
 
 v3 <- ggplot(filter(Res_fil_mer, q==2), aes(x=Habitat, y=Dq)) + geom_violin(fill="#66CDAA") +
-  labs(y="D2", x="")
+  labs(y="D2", x="") + theme(text = element_text(size=20), axis.text = element_text(color = "black"))
 summary(lm(Dq ~ Habitat, filter(Res_fil_mer, q==2))) #R2 = 0.003525, p = 0.9794
 
-grid.arrange(v1,v2,v3)
+ggarrange(v1,v2,v3)
 ggsave("Violin plots D by habitat.png", plot = arrangeGrob(v1,v2,v3), device="png", width = 6, height=6, units="in")
 
 ## wide format data for ratio calcs ####
@@ -620,11 +620,11 @@ Res_fil_mer_wideD$D2_D1 <- Res_fil_mer_wideD$qD2/Res_fil_mer_wideD$qD1
 psych::multi.hist(Res_fil_mer_wideD[,10:14])
 
 (v4 <- ggplot(Res_fil_mer_wideD, aes(x=Habitat, y=D1_D0)) + geom_violin(fill="#FF7F24") +
-    labs(y="D1/D0", x=""))
+    labs(y="D1/D0", x="") + theme(text = element_text(size=20), axis.text = element_text(color = "black")))
 summary(lm(D1_D0 ~ Habitat, Res_fil_mer_wideD)) #R2 = 0.008456, p = 0.8383
 
 (v5 <- ggplot(Res_fil_mer_wideD, aes(x=Habitat, y=D2_D1)) + geom_violin(fill="#7A67EE") +
-    labs(y="D2/D1", x=""))
+    labs(y="D2/D1", x="") + theme(text = element_text(size=20), axis.text = element_text(color = "black")))
 summary(lm(D2_D1 ~ Habitat, Res_fil_mer_wideD)) #R2 = 0.004011, p = 0.9713
 
 
