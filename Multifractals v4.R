@@ -843,3 +843,146 @@ cor(Res_fil_mer_wideD[,c(7:8,11:15)], method="spearman")
 # qD2                    -0.023731180 0.083892111  0.266414647  0.94564959  1.00000000  0.886304086  0.84016979
 # D1_D0                  -0.008993242 0.050789497  0.059072096  0.84994854  0.88630409  1.000000000  0.80350586
 # D2_D1                   0.052099208 0.138424437 -0.090528149  0.65775135  0.84016979  0.803505860  1.00000000
+
+
+# network ####
+library(SpiecEasi)
+library(igraph)
+library(Matrix)
+
+BACT_NET <- BACT_ORD
+dim(BACT_NET) #[1]   436 58164
+
+# only samples with psd
+BACT_NET <- BACT_NET[substring(rownames(BACT_NET),2) %in% GMEP$REP_ID,]
+# only OTUs that appear in 50% of sites
+BACT_NET <- BACT_NET[,colSums(BACT_NET>0)>0.8*nrow(BACT_NET)]
+dim(BACT_NET) #[1]  359 1265
+
+FUNG_NET <- FUNGI_ORD
+dim(FUNG_NET) #[1]  437 8407
+
+FUNG_NET <- FUNG_NET[substring(rownames(FUNG_NET),2) %in% GMEP$REP_ID,]
+FUNG_NET <- FUNG_NET[,colSums(FUNG_NET>0)>0.25*nrow(FUNG_NET)]
+dim(FUNG_NET) #[1] 361  223
+FUNG_NET <- FUNG_NET[substring(rownames(FUNG_NET),2) %in% substring(rownames(BACT_NET),2),]
+dim(FUNG_NET) #[1] 359  223
+
+PSD_NET <- GMEP[GMEP$REPEATED < 2,c(1,8:123)]
+rownames(PSD_NET) <- paste0("X",PSD_NET$REP_ID)
+PSD_NET <- PSD_NET[,-1]
+PSD_NET <- PSD_NET[rownames(PSD_NET) %in% rownames(FUNG_NET),]
+
+FUNG_NET <- FUNG_NET[rownames(FUNG_NET) %in% rownames(PSD_NET),]
+FUNG_NET <- FUNG_NET[rownames(PSD_NET),]
+
+BACT_NET <- BACT_NET[rownames(BACT_NET) %in% rownames(PSD_NET),]
+BACT_NET <- BACT_NET[rownames(PSD_NET),]
+
+
+all.equal(rownames(PSD_NET),rownames(FUNG_NET))
+PSD_NET <- as.matrix(PSD_NET)
+PSD_NET <- 1000*round(PSD_NET,3)
+PSD_NET <- PSD_NET[,colSums(PSD_NET>0)>0.5*nrow(PSD_NET)]
+
+# network construction
+se1 <- spiec.easi(list(PSD_NET, BACT_NET, FUNG_NET), 
+                  method = "mb", sel.criterion = "bstars")
+
+refit1 <- getRefit(se1)
+elist <- summary(symBeta(getOptBeta(se1), mode = "maxabs"))
+diag(elist) <- 0
+weights <- elist[,3]
+
+se1.ig <- adj2igraph(refit1,
+                     edge.attr = list(weight = weights))
+
+co <- layout_with_fr(se1.ig)
+col <- c(rep("dodgerblue",114),rep("gray",1265),rep("firebrick3",223))
+plot(se1.ig, layout = co, vertex.label = NA, vertex.color = col,
+     vertex.size = 2, alpha = 0.1)
+
+test <- as_adjacency_matrix(se1.ig, attr = "weight", sparse = FALSE)
+
+ncol(PSD_NET) #114
+ncol(BACT_NET) #1265
+ncol(FUNG_NET) #223
+t2 <- test[1:114,115:ncol(test)]
+sum(t2 !=0) #307
+
+summary(c(t2))
+# Min.    1st Qu.     Median       Mean    3rd Qu.       Max. 
+# -0.1316688  0.0000000  0.0000000  0.0001723  0.0000000  0.8600919 
+hist(rowSums(t2))
+summary(rowSums(t2))
+# Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+# -0.14649  0.00000  0.05153  0.25642  0.33352  1.63847 
+sort(rowSums(t2))
+# only cols 
+t2_no0 <- c(t2)[c(t2) != 0]
+summary(t2_no0)
+# Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+# -0.131669  0.004112  0.024892  0.095219  0.131068  0.860092
+
+test2 <- test
+test2[1:114,1:114] <- 0
+test2[115:1380,115:1380] <- 0
+test2[1381:1602,1381:1602] <- 0
+
+test2.ig <- adj2igraph(test2)
+co <- layout_with_fr(test2.ig)
+plot(test2.ig, layout = co, vertex.color = col, vertex.label = NA,
+     vertex.size = 5)
+
+test3 <- test2
+test3[115:1101,1102:1273] <- 0
+test3[1102:1273,117:1101] <- 0
+
+rownames(test3) <- c(paste0("P",substring(colnames(PSD_NET),2,5)),
+                     paste0("B",substring(colnames(BACT_NET),4)),
+                     paste0("F",substring(colnames(FUNG_NET), 4)))
+colnames(test3) <- c(paste0("P",substring(colnames(PSD_NET),2,5)),
+                     paste0("B",substring(colnames(BACT_NET),4)),
+                     paste0("F",substring(colnames(FUNG_NET), 4)))
+test4 <- test3[rowSums(test3) != 0, colSums(test3) != 0]
+
+plot(adj2igraph(test4))
+
+library(qgraph)
+qgraph(test4)
+
+col_test <- ifelse(grepl("P",rownames(test4)), "red",
+                   ifelse(grepl("B", rownames(test4)), "blue", "yellow"))
+
+qgraph(test4, color = col_test)
+
+
+
+# spearman rank correlationscolnames(PSD_NET)
+testcor <- cor(cbind(PSD_NET, FUNG_NET), method = "spearman")
+dim(testcor)
+hist(testcor)
+length(c(testcor)[abs(c(testcor))>0.5])
+length(c(testcor)[abs(c(testcor))>0.8])
+
+# set all texture to texture and fungi to fungi correlations to 0
+testcor[1:114,1:114] <- 0
+testcor[115:337,115:337] <- 0
+length(c(testcor)[abs(c(testcor))>0.8]) #0
+length(c(testcor)[abs(c(testcor))>0.5]) #0
+hist(testcor)
+
+
+testcor <- cor(cbind(PSD_NET, BACT_NET), method = "spearman")
+dim(testcor)
+hist(testcor)
+length(c(testcor)[abs(c(testcor))>0.5])
+length(c(testcor)[abs(c(testcor))>0.8])
+
+
+# set all texture to texture and bact to bact correlations to 0
+testcor[1:116,1:116] <- 0
+testcor[117:1381,117:1381] <- 0
+length(c(testcor)[abs(c(testcor))>0.8]) #0
+length(c(testcor)[abs(c(testcor))>0.5]) #2
+hist(testcor)
