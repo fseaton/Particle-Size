@@ -27,7 +27,29 @@ library(Matrix)
 library(gridExtra)
 
 ## get data ####
-summary(GMEP)
+summary(GMEP) # this contains the PSD data, along with some ancillary data
+# format of GMEP is:
+str(GMEP)
+# 'data.frame':	393 obs. of  127 variables:
+# $ REP_ID    : Factor w/ 365 levels "10170X1","10170X4",..: 1 2 3 4 4 5 6 7 8 9 ...
+# $ SQNUM     : int  10170 10170 10170 10412 10412 10412 10412 10498 10498 10498 ...
+# $ PLOTNUM   : int  1 4 5 1 1 3 4 1 2 3 ...
+# $ REPEATED  : int  NA NA NA 1 2 NA NA NA NA NA ...
+# $ YEAR      : int  2014 2014 2014 2014 2014 2014 2014 2013 2013 2013 ...
+# $ BATCH     : int  5 5 5 5 5 5 5 1 1 1 ...
+# $ X0.03999  : int  0 0 0 0 0 0 0 0 0 0 ...
+# $ X0.0438996: num  0.001962 0.001801 0.000396 0.000879 0.000948 ...
+# $ X0.0481915: num  0.002478 0.002286 0.000573 0.001129 0.001215 ...
+# $ X0.0529029: num  0.00392 0.00368 0.00116 0.00187 0.002 ...
+# ...
+# $ X1511.83: num  0.0409 0.0097 0.0217 0.1901 0.174 ...
+# $ X1659.63: num  0.004 0 0.0015 0.0207 0.0187 ...
+# $ X1821.88: num  0 0 0 0 0 ...
+# $ X2000   : num  0 0 0 0 0 ...
+# $ CLAY    : num  24.2 27.7 25.4 20.6 20.6 ...
+# $ SILT    : num  49 52.8 54.1 47.6 48.4 ...
+# $ SAND    : num  26.8 19.5 20.5 31.9 31 ...
+# $ TOTAL   : num  100 100 100 100 100 100 100 100 100 100 ...
 apply(GMEP, 2, anyNA)
 GMEP[is.na(GMEP)] <- 0
 summary(GMEP)
@@ -109,6 +131,7 @@ Result <- data.frame(REP_ID = character(0),
                      falpha = character(0))
 
 ## Actual calculation ####
+# this loop takes 22 seconds for me, haven't bothered optimising
 for (i in 1:nrow(PSD)){
   ## for every rep cut data
   Data.vec <- PSD[i,] # select one rep's worth of data
@@ -133,6 +156,7 @@ for (i in 1:nrow(PSD)){
   Result <- rbind(Result, Res.temp)
   
 }
+# many warnings that model fit is essentially perfect, not a problem for what we're doing
 View(Result)
 dim(Result)
 # 17085 6
@@ -167,6 +191,10 @@ hist(filter(Result, Rsq<0.8)[,2])
 
 Result_filrsq <- filter(Result, Rsq > 0.9 | is.na(Rsq))
 summary(Result_filrsq)
+
+# plot out the different distributions for every sample. This prints to pdf in a way that is specific to
+# my dataset. Probably want to alter the height of the pdf and the number of rows if you're doing this
+# on your own data
 REPS_unique <- unique(Result_filrsq$REP_ID)
 
 pdf("Dq against q v2.pdf", width=7, height=147)
@@ -199,17 +227,19 @@ dev.off()
 library(qgraph)
 library(Hmisc)
 
+# only look at correlations of the Dqs that are integers between -5 and 5
 summary(Result_filrsq)
 Res_fil_wide <- Result_filrsq %>% select(REP_ID, q, Dq) %>%
   filter(q %in% -5:5) %>%
   spread(key=q, value=Dq)
 
-Res_fil_wide_cor_dt <- select(GMEP, REP_ID, X0.0438996:SAND) %>% merge(Res_fil_wide, by="REP_ID")
-
-cor <- rcorr(as.matrix(Res_fil_wide_cor_dt[,2:131]), type="spearman")
-n <- 130
-0.05/(n*n-n) #2.981515e-06
-corsel <- cor$P < 2.981515e-06
+Res_fil_wide_cor_dt <- select(GMEP, REP_ID, X0.0438996:SAND) %>% merge(Res_fil_wide, by="REP_ID") #select all the data 
+cor <- rcorr(as.matrix(Res_fil_wide_cor_dt[,2:131]), type="spearman") # calculate spearman rank correlations
+n <- 130 # number of variables in correlation matrix
+0.05/(n*n-n) #2.981515e-06 # calculate number of comparisons for Bonferroni correction
+corsel <- cor$P < 2.981515e-06 # create binary matrix for selection of "significant" comparisons
+# use binary selection matrix to create new correlation network with only the rho values of the 
+# significant correlations. Bit clunky, but shouldn't take long with n = 130
 cor2 <- matrix(nrow=n,ncol=n)
 for (i in 1:n){
   for (j in 1:n){
@@ -222,7 +252,80 @@ cor2
 colnames(cor2) <- colnames(Res_fil_wide_cor_dt)[2:131]
 rownames(cor2) <- colnames(Res_fil_wide_cor_dt)[2:131]
 colnames(cor2)
-cor2[120:130,c("CLAY","SILT","SAND")] ##find correlations between MF and SSC only
+
+# create graphical parameters
+Size <- as.numeric(matrix(unlist(strsplit(colnames(cor2)[1:116],"X")), ncol=2, byrow=T)[,2])
+Sizelab <- as.character(signif(Size,2))
+qlab <- paste("q",colnames(cor2)[120:130], sep="=")
+labs <- c(Sizelab, colnames(cor2)[117:119], qlab)
+
+palette <- colorRampPalette(colors = c("firebrick1","lightgoldenrod1","dodgerblue1"))
+col <- c(palette(116),"firebrick1", "lightgoldenrod1","dodgerblue1",
+         rep("hotpink",11))
+shp <- c(rep("circle", 116), rep("triangle", 3), rep("square", 11))
+
+# plot correlation matrix as network using qgraph package
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp)
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp, filetype="png", 
+       filename=paste("PSD network Bonferroni multifractals colour gradient",Sys.Date(),sep=" "), 
+       width=20, height=16)
+
+# only plot the correlations with rho > 0.5
+corsel <- abs(cor$r) > 0.5
+cor2 <- matrix(nrow=n,ncol=n)
+for (i in 1:n){
+  for (j in 1:n){
+    ifelse(is.na(corsel[i,j]), cor2[i,j] <- NA, 
+           ifelse(corsel[i,j]==F, cor2[i,j] <- NA,cor2[i,j] <- cor$r[i,j]))
+  }
+}
+cor2
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp)
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp, filetype="png", 
+       filename=paste("PSD network r 0.5 multifractals colour gradient",Sys.Date(),sep=" "), 
+       width=20, height=16, vsize = 2)
+
+# THIS IS THE VERSION YOU SHOULD USE ####
+# logratio transform of compositional data
+GMEP_comp <- select(GMEP, REP_ID, X0.0438996:X2000)
+colnames(GMEP_comp)
+summary(GMEP_comp)
+min(GMEP_comp[GMEP_comp>0], na.rm = TRUE) #0.0001
+
+# remove column with min > 0 for this calculation
+set.seed(291018)
+sample(colnames(GMEP_comp)[2:117], 1) #"X146.815" min = 0
+sample(colnames(GMEP_comp)[2:117], 1) #"X0.0768275" min = 0
+sample(colnames(GMEP_comp)[2:117], 1) #"X14.2573" min = 0.0206
+
+comp_vec <- GMEP_comp[,"X14.2573"]
+GMEP_comp <- select(GMEP_comp, -X14.2573)
+GMEP_comp <- apply(GMEP_comp[,2:116], 2, function(x) log((x + 1e-20)/comp_vec))
+
+GMEP_comp <- as.data.frame(GMEP_comp)
+GMEP_comp$REP_ID <- GMEP$REP_ID
+
+# use logratio transformed data for network construction
+Res_fil_wide_cor_dt <- select(GMEP_comp, REP_ID, X0.0438996:X2000) %>% merge(Res_fil_wide, by="REP_ID")
+Res_fil_wide_cor_dt <- select(GMEP, REP_ID, CLAY:SAND) %>% merge(Res_fil_wide_cor_dt, by="REP_ID")
+
+# calculate spearman rank correlation
+cor <- rcorr(as.matrix(Res_fil_wide_cor_dt[,2:130]), type="spearman")
+n <- 129 # number of variables
+corsel <- cor$P < 0.05/(n*n-n) # create binary selection matrix using Bonferroni assessed significance
+cor2 <- matrix(nrow=n,ncol=n)
+for (i in 1:n){
+  for (j in 1:n){
+    ifelse(is.na(corsel[i,j]), cor2[i,j] <- NA, 
+           ifelse(corsel[i,j]==F, cor2[i,j] <- NA,cor2[i,j] <- cor$r[i,j]))
+  }
+}
+cor2
+
+colnames(cor2) <- colnames(Res_fil_wide_cor_dt)[2:130]
+rownames(cor2) <- colnames(Res_fil_wide_cor_dt)[2:130]
+colnames(cor2)
+cor2[119:129,c("CLAY","SILT","SAND")] ##find correlations between MF and SSC only
 #          CLAY       SILT       SAND
 # -5  0.6297889         NA -0.3316516
 # -4  0.6269396         NA -0.3281596
@@ -235,19 +338,25 @@ cor2[120:130,c("CLAY","SILT","SAND")] ##find correlations between MF and SSC onl
 # 3          NA -0.2942029  0.3707512
 # 4          NA -0.2587706  0.3210079
 # 5          NA         NA  0.2850174
-Size <- as.numeric(matrix(unlist(strsplit(colnames(cor2)[1:116],"X")), ncol=2, byrow=T)[,2])
+
+# create graphical parameters
+Size <- as.numeric(matrix(unlist(strsplit(colnames(cor2)[4:118],"X")), ncol=2, byrow=T)[,2])
 Sizelab <- as.character(signif(Size,2))
-qlab <- paste("q",colnames(cor2)[120:130], sep="=")
-labs <- c(Sizelab, colnames(cor2)[117:119], qlab)
+qlab <- paste("q",colnames(cor2)[119:129], sep="=")
+labs <- c(colnames(cor2)[1:3], Sizelab, qlab)
 
 palette <- colorRampPalette(colors = c("firebrick1","lightgoldenrod1","dodgerblue1"))
-col <- c(palette(116),"firebrick1", "lightgoldenrod1","dodgerblue1",
+col <- c("firebrick1", "lightgoldenrod1","dodgerblue1",palette(115),
          rep("hotpink",11))
-qgraph(cor2, layout="spring", labels=labs, color=col)
-qgraph(cor2, layout="spring", labels=labs, color=col, filetype="png", 
-       filename=paste("PSD network Bonferroni multifractals colour gradient",Sys.Date(),sep=" "), 
+shp <- c(rep("triangle", 3), rep("circle", 115), rep("square", 11))
+
+# plot correlation matrix as a network
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp)
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp, filetype="png", 
+       filename=paste("PSD network Bonferroni multifractals colour gradient logratio",Sys.Date(),sep=" "), 
        width=20, height=16)
 
+# select only correlations with rho > 0.5
 corsel <- abs(cor$r) > 0.5
 cor2 <- matrix(nrow=n,ncol=n)
 for (i in 1:n){
@@ -257,19 +366,35 @@ for (i in 1:n){
   }
 }
 cor2
-qgraph(cor2, layout="spring", labels=labs, color=col)
-qgraph(cor2, layout="spring", labels=labs, color=col, filetype="png", 
-       filename=paste("PSD network r 0.5 multifractals colour gradient",Sys.Date(),sep=" "), 
+
+# plot as network
+qgraph(cor2, layout="spring", labels=labs, color=col, shape = shp, posCol = rgb(86,180,233,maxColorValue = 255),
+       negCol = rgb(213,94,0,maxColorValue = 255))
+qgraph(cor2, layout="spring", labels=labs, color=col, shape =shp, filetype="pdf",
+       posCol = rgb(86,180,233,maxColorValue = 255),
+       negCol = rgb(213,94,0,maxColorValue = 255),
+       filename=paste("PSD network r 0.5 multifractals colour gradient logratio",Sys.Date(),sep=" "), 
        width=20, height=16, vsize = 2)
 
-
-cor_pos <- ifelse(cor2 > 0, cor$r, 0)
+# use positive correlations only to create network in igraph and find clusters of related nodes
+library(igraph)
+cor_pos <- ifelse(cor$r > 0, cor$r, 0)
 cor_pos <- ifelse(cor$P < 2.981515e-06, cor_pos, 0)
-cor_pos <- cor_pos[1:116,1:116] # remove multifractals and summary values
+qgraph(cor_pos, layout = "spring", labels = labs, color = col, shape = shp)
+qgraph(cor_pos, layout="spring", labels=labs, color=col, shape =shp, filetype="png", 
+       filename=paste("PSD network bonferroni multifractals colour gradient logratio positive only",Sys.Date(),sep=" "), 
+       width=20, height=16, vsize = 2)
+cor_pos <- cor_pos[4:118,4:118] # remove multifractals and summary values
+colnames(cor_pos)
 qgraph(cor_pos, layout = "spring")
+
 graph <- graph_from_adjacency_matrix(cor_pos, mode="undirected", weighted = TRUE)
 plot(graph)
+graph <- simplify(graph) #remove self loops and multiple edges
+plot(graph)
 
+# multiple algorithms could be used for detecting clusters. I've tried out a couple here but I think
+# walktrap suits this kind of data best
 clusters.eb <- cluster_edge_betweenness(graph) #warning about modularity treating links as similarities but eb treating as distances
 membership(clusters.eb)
 
@@ -278,34 +403,38 @@ membership(cluster.wt)
 
 cluster.sg <- cluster_spinglass(graph)
 membership(cluster.sg)
+sizes(cluster.sg)
+# Community sizes
+# 1  2  3  4 
+# 48 65  1  1 
 
 membership(cluster.wt)
-# X0.0438996 X0.0481915 X0.0529029 X0.0580749 X0.0637526 X0.0699854 X0.0768275 X0.0843385 X0.0925838  X0.101635  X0.111572  X0.122479 
-# 3          3          3          3          3          3          3          3          3          3          3          3 
-# X0.134454  X0.147598  X0.162028  X0.177869  X0.195258  X0.214348  X0.235303  X0.258308  X0.283561  X0.311283  X0.341716  X0.375124 
-# 2          2          2          2          2          2          2          2          2          2          2          2 
-# X0.411798  X0.452057  X0.496252  X0.544768  X0.598027  X0.656493  X0.720675  X0.791132  X0.868477  X0.953383   X1.04659   X1.14891 
-# 2          2          2          2          2          2          2          2          2          2          2          2 
-# X1.26123   X1.38454    X1.5199   X1.66849   X1.83161   X2.01068   X2.20725   X2.42304   X2.65993   X2.91998   X3.20545   X3.51883 
-# 2          2          2          2          2          2          2          2          2          2          2          2 
-# X3.86284   X4.24049   X4.65506   X5.11017   X5.60976    X6.1582   X6.76025   X7.42117   X8.14669   X8.94315   X9.81748   X10.7773 
-# 2          2          2          2          2          2          2          2          2          2          2          2 
-# X11.8309   X12.9876   X14.2573   X15.6512   X17.1813    X18.861    X20.705   X22.7292   X24.9513   X27.3906   X30.0685   X33.0081 
-# 2          2          2          2          2          2          2          2          3          3          3          3 
-# X36.2352   X39.7777   X43.6665   X47.9356    X52.622   X57.7666   X63.4141   X69.6138   X76.4196   X83.8907   X92.0923   X101.096 
-# 3          3          3          3          3          3          1          1          1          1          1          1 
-# X110.979   X121.829    X133.74   X146.815   X161.168   X176.925   X194.222    X213.21   X234.054   X256.936   X282.056   X309.631 
-# 1          1          1          1          1          1          1          1          1          1          1          1 
-# X339.902   X373.132   X409.611   X449.657   X493.617   X541.876   X594.852   X653.008   X716.849   X786.932   X863.866   X948.322 
-# 1          1          1          1          1          1          1          1          1          1          1          1 
-# X1041.03   X1142.81   X1254.54   X1377.19   X1511.83   X1659.63   X1821.88      X2000 
-# 1          1          1          1          1          1          1          1
+# X0.0438996 X0.0481915 X0.0529029 X0.0580749 X0.0637526 X0.0699854 X0.0768275 X0.0843385 X0.0925838  X0.101635  X0.111572  X0.122479  X0.134454 
+# 2          2          2          2          2          2          2          2          2          2          2          2          2 
+# X0.147598  X0.162028  X0.177869  X0.195258  X0.214348  X0.235303  X0.258308  X0.283561  X0.311283  X0.341716  X0.375124  X0.411798  X0.452057 
+# 1          1          1          1          1          1          1          1          1          1          1          1          1 
+# X0.496252  X0.544768  X0.598027  X0.656493  X0.720675  X0.791132  X0.868477  X0.953383   X1.04659   X1.14891   X1.26123   X1.38454    X1.5199 
+# 1          1          1          1          1          1          1          1          1          1          1          1          1 
+# X1.66849   X1.83161   X2.01068   X2.20725   X2.42304   X2.65993   X2.91998   X3.20545   X3.51883   X3.86284   X4.24049   X4.65506   X5.11017 
+# 1          1          1          1          1          1          1          1          1          1          1          1          1 
+# X5.60976    X6.1582   X6.76025   X7.42117   X8.14669   X8.94315   X9.81748   X10.7773   X11.8309   X12.9876   X15.6512   X17.1813    X18.861 
+# 1          1          1          1          1          1          1          1          1          1          2          2          2 
+# X20.705   X22.7292   X24.9513   X27.3906   X30.0685   X33.0081   X36.2352   X39.7777   X43.6665   X47.9356    X52.622   X57.7666   X63.4141 
+# 2          2          2          2          2          2          2          2          2          2          2          2          2 
+# X69.6138   X76.4196   X83.8907   X92.0923   X101.096   X110.979   X121.829    X133.74   X146.815   X161.168   X176.925   X194.222    X213.21 
+# 2          2          2          2          2          2          2          2          2          2          2          2          2 
+# X234.054   X256.936   X282.056   X309.631   X339.902   X373.132   X409.611   X449.657   X493.617   X541.876   X594.852   X653.008   X716.849 
+# 2          2          2          2          2          2          2          2          2          2          2          2          2 
+# X786.932   X863.866   X948.322   X1041.03   X1142.81   X1254.54   X1377.19   X1511.83   X1659.63   X1821.88      X2000 
+# 2          2          2          2          2          2          2          2          2          2          2 
 modularity(cluster.wt)
-# [1] 0.4138004
+# [1] 0.4785825
 sizes(cluster.wt)
 # Community sizes
-# 1  2  3 
-# 38 56 22 
+# 1  2 
+# 49 66
+
+
 ## spinglass can deal with negative weights
 graph.neg <- graph_from_adjacency_matrix(cor$r[1:116,1:116], mode = "undirected", weighted = TRUE)
 
@@ -316,9 +445,9 @@ membership(clus2.sg)
 
 ## Soil texture ternary diagram ####
 library(soiltexture)
-TT.plot(tri.data = Res_fil_wide_cor_dt, main = "Texture classes",
+TT.plot(tri.data = GMEP, main = NA,
         text.sum = 100, base.css.ps.lim = c(0,2.2,63,2000),
-        class.sys = "UK.SSEW.TT", pch=16, frame.bg.col = "white", grid.col = "gray90",
+        class.sys = "UK.SSEW.TT", pch=16, frame.bg.col = "white", grid.col = "white",
         class.lab.col = "gray60", class.line.col	= "gray50", cex=0.7)
 
 ### Comparison to other data ####
@@ -332,7 +461,7 @@ BH_PSD <- droplevels(BH_PSD)
 summary(BH_PSD$BH)
 
 
-## arable ####
+## plot multifractal spectra for arable sites ####
 Arable_reps <- as.character(filter(BH_PSD, BH == "Arable and horticultural")$REP_ID)
 
 
@@ -344,6 +473,7 @@ Arable_PSD <- select(Soil, REP_ID, C_FE_CTOTAL, C_B_PH_CACL2, TOTAL_MITES, TOTAL
   merge(Arable_PSD, by="REP_ID", all.y=T)
 summary(Arable_PSD)
 
+# plots of multifractal spectra (Dq ~ q) coloured by environmental variables
 d1 <- ggplot(Arable_PSD, aes(x=q, y=Dq, group=REP_ID, col=C_FE_CTOTAL)) + geom_line(lwd=1.5) +
   scale_color_gradient(low="#a1dab4", high="#253494",name="Carbon") + 
   theme(text = element_text(size=15, colour = "black"),
@@ -397,8 +527,8 @@ grid.arrange(f1,f2,f3,f4)
 summary(BH_PSD$BH)
 BH_PSD$Habitat <- recode_factor(BH_PSD$BH,
                                 "Arable and horticultural" = "Arable",
-                                "Improved Grassland" = "Impr Grass",
-                                "Neutral Grassland" = "Neutr Grass",
+                                "Improved Grassland" = "Improved Grass",
+                                "Neutral Grassland" = "Neutral Grass",
                                 "Acid Grassland" = "Acid Grass",
                                 "Broadleaved, mixed and yew woodland" = "Broadleaved",
                                 "Coniferous Woodland" = "Conifer",
@@ -406,7 +536,7 @@ BH_PSD$Habitat <- recode_factor(BH_PSD$BH,
                                 "Bracken" = "Heath",
                                 "Dwarf Shrub Heath" = "Heath",
                                 "Bog" = "Heath",
-                                "Calcareous Grassland" = "Impr Grass",
+                                "Calcareous Grassland" = "Improved Grass",
                                 "Supra-littoral rock" = "Other",
                                 "Supra-littoral sediment" = "Other")
 summary(BH_PSD$Habitat)
@@ -422,9 +552,9 @@ Res_fil_mer <- Res_fil_mer[!is.na(Res_fil_mer$Habitat),]
 
 ## simple plots by habitat
 ## Dq vs q
-ggplot(Res_fil_mer, aes(x=q, y=Dq, group=REP_ID)) + geom_line(alpha=0.2) + 
-  facet_wrap(~Habitat)
-ggsave("Dq vs q by habitat.png", device = "png")
+ggplot(Res_fil_mer, aes(x=q, y=Dq, group=REP_ID)) + geom_line(alpha=0.2, lwd = 1.5, color = "dodgerblue") + 
+  facet_wrap(~Habitat, nrow = 2) + theme(text = element_text(size=20), axis.text = element_text(colour = "black"))
+ggsave("Dq vs q by habitat wide.png", device = "png", path = "./Graphs/", width = 30, heigh = 12, units = "cm")
 
 ggplot(Res_fil_mer, aes(x=q, y=Dq, group=REP_ID)) + geom_line(alpha=0.2) + 
   facet_wrap(~Habitat) + scale_x_continuous(limits = c(-0.5,2.5)) + scale_y_continuous(limits = c(0,2))
@@ -481,18 +611,18 @@ ggsave("Dq vs q by invert.png", device = "png")
 
 ### Violin plots of D0, D1 and D2 by habitat
 v1 <- ggplot(filter(Res_fil_mer, q==0), aes(x=Habitat, y=Dq)) + geom_violin(fill="#6CA6CD") +
-  labs(y="D0", x="")
+  labs(y="D0", x="") + theme(text = element_text(size=20), axis.text = element_text(color = "black"))
 summary(lm(Dq ~ Habitat, filter(Res_fil_mer, q==0))) #R2 = 0.03981, p = 0.03994
 
 v2 <- ggplot(filter(Res_fil_mer, q==1), aes(x=Habitat, y=Dq)) + geom_violin(fill="#FF6A6A") +
-  labs(y="D1", x="")
+  labs(y="D1", x="") + theme(text = element_text(size=20), axis.text = element_text(color = "black"))
 summary(lm(Dq ~ Habitat, filter(Res_fil_mer, q==1))) #R2 = 0.02495, p = 0.2229
 
 v3 <- ggplot(filter(Res_fil_mer, q==2), aes(x=Habitat, y=Dq)) + geom_violin(fill="#66CDAA") +
-  labs(y="D2", x="")
+  labs(y="D2", x="") + theme(text = element_text(size=20), axis.text = element_text(color = "black"))
 summary(lm(Dq ~ Habitat, filter(Res_fil_mer, q==2))) #R2 = 0.003525, p = 0.9794
 
-grid.arrange(v1,v2,v3)
+ggarrange(v1,v2,v3)
 ggsave("Violin plots D by habitat.png", plot = arrangeGrob(v1,v2,v3), device="png", width = 6, height=6, units="in")
 
 ## wide format data for ratio calcs ####
@@ -507,11 +637,11 @@ Res_fil_mer_wideD$D2_D1 <- Res_fil_mer_wideD$qD2/Res_fil_mer_wideD$qD1
 psych::multi.hist(Res_fil_mer_wideD[,10:14])
 
 (v4 <- ggplot(Res_fil_mer_wideD, aes(x=Habitat, y=D1_D0)) + geom_violin(fill="#FF7F24") +
-    labs(y="D1/D0", x=""))
+    labs(y="D1/D0", x="") + theme(text = element_text(size=20), axis.text = element_text(color = "black")))
 summary(lm(D1_D0 ~ Habitat, Res_fil_mer_wideD)) #R2 = 0.008456, p = 0.8383
 
 (v5 <- ggplot(Res_fil_mer_wideD, aes(x=Habitat, y=D2_D1)) + geom_violin(fill="#7A67EE") +
-    labs(y="D2/D1", x=""))
+    labs(y="D2/D1", x="") + theme(text = element_text(size=20), axis.text = element_text(color = "black")))
 summary(lm(D2_D1 ~ Habitat, Res_fil_mer_wideD)) #R2 = 0.004011, p = 0.9713
 
 
@@ -568,9 +698,9 @@ ggplot(filter(Res_fil_mer, q==0), aes(x=Dq, y=BACT_R_RICH)) + geom_point(cex = 2
   facet_wrap(~Habitat)
 
 (b0 <- ggplot(filter(Res_fil_mer, q==0), aes(x=Dq, y=BACT_R_RICH)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+#  geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x="D0"))
+        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x=expression(D[0])))
 
 
 # Bacteria vs D1
@@ -585,9 +715,9 @@ ggplot(filter(Res_fil_mer, q==1), aes(x=Dq, y=BACT_R_RICH)) + geom_point(cex = 2
   facet_wrap(~Habitat)
 
 b1 <- ggplot(filter(Res_fil_mer, q==1), aes(x=Dq, y=BACT_R_RICH)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+#  geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x="D1")
+        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x=expression(D[1]))
 
 
 summary(lm(BACT_R_RICH ~ Dq*Habitat, filter(Res_fil_mer, q==1)))
@@ -610,27 +740,27 @@ ggplot(filter(Res_fil_mer, q==2), aes(x=Dq, y=BACT_R_RICH)) + geom_point(cex = 2
   facet_wrap(~Habitat) + geom_smooth(method="lm")
 
 b2 <- ggplot(filter(Res_fil_mer, q==2), aes(x=Dq, y=BACT_R_RICH)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+#  geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x="D2")
+        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x=expression(D[2]))
 
 summary(lm(BACT_R_RICH ~ Dq*Habitat, filter(Res_fil_mer, q==2)))
 
 ## Plots for paper ####
 f0 <- ggplot(filter(Res_fil_mer, q==0), aes(x=Dq, y=FUNG_R_RICH_BLAST)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+ # geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x="D0")
+        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x=expression(D[0]))
 
 f1 <- ggplot(filter(Res_fil_mer, q==1), aes(x=Dq, y=FUNG_R_RICH_BLAST)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+ # geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x="D1")
+        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x=expression(D[1]))
 
 f2 <- ggplot(filter(Res_fil_mer, q==2), aes(x=Dq, y=FUNG_R_RICH_BLAST)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+ # geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x="D2")
+        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x=expression(D[2]))
 
 library(gridExtra)
 grid.arrange(b0,b1,b2,f0,f1,f2, ncol = 3)
@@ -640,26 +770,28 @@ ggsave("Bacteria Fungi D parameters.pdf", plot=arrangeGrob(b0,b1,b2,f0,f1,f2, nc
        device = "pdf", path = "./Graphs/", width=30, height = 20, units="cm")
 
 b01 <- ggplot(Res_fil_mer_wideD, aes(x=D1_D0, y=BACT_R_RICH)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+ # geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x="D1/D0")
+        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x=expression(D[1]/D[0]))
 b12 <- ggplot(Res_fil_mer_wideD, aes(x=D2_D1, y=BACT_R_RICH)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+#  geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x="D2/D1")
+        axis.text = element_text(colour = "black")) + labs(y="Bacterial Richness", x=expression(D[2]/D[1]))
 
 f01 <- ggplot(Res_fil_mer_wideD, aes(x=D1_D0, y=FUNG_R_RICH_BLAST)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+ # geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x="D1/D0")
+        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x=expression(D[1]/D[0]))
 
 f12 <- ggplot(Res_fil_mer_wideD, aes(x=D2_D1, y=FUNG_R_RICH_BLAST)) + geom_point(cex = 2) + 
-  geom_smooth(method="lm") +
+ # geom_smooth(method="lm") +
   theme(text = element_text(size=15, colour = "black"),
-        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x="D2/D1")
+        axis.text = element_text(colour = "black")) + labs(y="Fungal Richness", x=expression(D[2]/D[1]))
 grid.arrange(b01,b12,f01,f12, ncol = 2)
 ggsave("Bacteria Fungi D ratios lm.png", plot=arrangeGrob(b01,b12,f01,f12, ncol = 2),
        device = "png", path = "./Graphs/", width=20, height = 20, units="cm")
+ggsave("Bacteria Fungi D ratios lm.pdf", plot=arrangeGrob(b01,b12,f01,f12, ncol = 2),
+       device = "pdf", path = "./Graphs/", width=20, height = 20, units="cm")
 
 
 b01 <- ggplot(Res_fil_mer_wideD, aes(x=D1_D0, y=BACT_R_RICH)) + geom_point(cex = 2) + 
@@ -679,6 +811,8 @@ f12 <- ggplot(Res_fil_mer_wideD, aes(x=D2_D1, y=FUNG_R_RICH_BLAST)) + geom_point
 grid.arrange(b01,b12,f01,f12, ncol = 2)
 ggsave("Bacteria Fungi D ratios.png", plot=arrangeGrob(b01,b12,f01,f12, ncol = 2),
        device = "png", path = "./Graphs/", width=20, height = 20, units="cm")
+ggsave("Bacteria Fungi D ratios.pdf", plot=arrangeGrob(b01,b12,f01,f12, ncol = 2),
+       device = "pdf", path = "./Graphs/", width=20, height = 20, units="cm")
 
 ## Models ####
 BACT_res <- resid(lm(BACT_R_RICH ~ C_B_PH_CACL2 + C_FE_CTOTAL, filter(Res_fil_mer, q==1)))
