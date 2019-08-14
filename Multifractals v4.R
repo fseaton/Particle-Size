@@ -439,6 +439,23 @@ ggplot(Res_fil_mer, aes(x=alpha, y=falpha, group=REP_ID)) + geom_line(alpha=0.2)
   facet_wrap(~Habitat) + scale_y_continuous(limits = c(0,1))
 ggsave("falpha by alpha by habitat zoomed.png", device = "png")
 
+# average by habitat
+res_fil_mer_hab <- Res_fil_mer %>%
+  group_by(Habitat, q) %>%
+  summarise(mean_Dq = mean(Dq),
+            upper_se = mean(Dq) + sd(Dq)/sqrt(length(Dq)),
+            lower_se = mean(Dq) - sd(Dq)/sqrt(length(Dq)),
+            upper_sd = mean(Dq) + sd(Dq),
+            lower_sd = mean(Dq) - sd(Dq))
+summary(res_fil_mer_hab)
+
+ggplot(res_fil_mer_hab, aes(x = q + 0.005*as.numeric(Habitat), 
+                            y = mean_Dq, colour = Habitat)) +
+  geom_line(lwd = 2) +
+  # geom_errorbar(aes(ymax = upper_se, ymin = lower_se)) +
+  geom_linerange(aes(ymax = upper_sd, ymin = lower_sd)) +
+  scale_color_brewer(palette = "Set2")
+
 ## simple plots by carbon
 ## Dq vs q
 ggplot(Res_fil_mer, aes(x=q, y=Dq, group=REP_ID)) + geom_line(alpha=0.2) + 
