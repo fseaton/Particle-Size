@@ -126,20 +126,20 @@ apply(cor2[,4280:4393], 2, function(x) length(x[x > 0]))
 cor_check <- cor2
 dimnames(cor_check) <- list(colnames(COR_BACT_MER),colnames(COR_BACT_MER))
 
-bact_w_match <- rowSums(cor_check[,4280:4393]) > 0
+bact_w_match <- rowSums(cor_check[,4287:4399]) > 0
 
 cor_check <- cor_check[bact_w_match, bact_w_match]
-dim(cor_check) #[1] 1188 1188
+dim(cor_check) #[1] 1184 1184
 
-colnames(cor_check)[1107:1188]
+colnames(cor_check)[1106:1184]
 
 # remove all bacteria to bacteria correlations and particle-size to particle
 # size correlations
-cor_check[1:1106,1:1106] <- 0
-cor_check[1107:1188,1107:1188] <- 0
+cor_check[1:1105,1:1105] <- 0
+cor_check[1106:1184,1106:1184] <- 0
 
 palette <- colorRampPalette(colors = c("firebrick1","lightgoldenrod1","dodgerblue1"))
-cols <- c(rep("black", 1106),palette(116)[c(1:79,108:110)])
+cols <- c(rep("black", 1105),palette(116)[c(1:76,108:110)])
 qgraph::qgraph(cor_check, layout = "spring", color = cols)
 
 # positive only
@@ -151,8 +151,8 @@ for(i in 1:ncol(corsel)){
   }
 }
 colnames(cor3) <- colnames(cor_check)
-colSums(cor3[1:1106,1107:1188]>0)
-x <- colSums(cor3[1:1106,1107:1188]>0)
+colSums(cor3[1:1105,1106:1184]>0)
+x <- colSums(cor3[1:1105,1106:1184]>0)
 dat <- data.frame(Sizes = as.numeric(substring(names(x),2)), Correlations = x)
 ggplot(dat, aes(x = Sizes, y = Correlations)) +  scale_x_log10(limits = c(0.04,2000)) + 
   geom_vline(xintercept  = 2.2, linetype = "dashed") + geom_vline(xintercept = 63, linetype = "dashed")+
@@ -165,7 +165,7 @@ qgraph::qgraph(cor3, layout = "spring", color = cols, labels = FALSE,
                posCol = "grey")
 
 # get names of bacteria
-bact_otu <- colnames(cor_check)[1:1106]
+bact_otu <- colnames(cor_check)[1:1105]
 bact_otu_id <- BACT[BACT$OTU_ID %in% bact_otu, c(1,445:452)]
 table(bact_otu_id$Phylum)
 
@@ -175,6 +175,16 @@ length(unique(bact_otu_id$taxonomy)) #219
 bact_tab <- count(bact_otu_id, taxonomy)
 
 write.csv(bact_tab, "../bact_tab.csv", row.names = FALSE)
+
+rownames(cor3) <- colnames(cor3)
+cor_bact_forprint <- cor3[1:1105,1106:1184]
+cor_bact_forprint <- cor_bact_forprint[,colSums(cor_bact_forprint)>0] %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column("OTU_ID") %>%
+  left_join(x = bact_otu_id, y = .) %>%
+  arrange(taxonomy)
+str(cor_bact_forprint)
+write.csv(cor_bact_forprint, "Graphs/bact_cor.csv", row.names = FALSE)
 
 # now plot correlation network with bacterial nodes coloured by class
 rownames(bact_otu_id) <- bact_otu_id$OTU_ID
@@ -225,6 +235,24 @@ ggplot(bact_phyla, aes(x = reorder(Phylum, -value), y = value)) +
   labs(y = "Count", x = "Phylum")
 ggsave("Bact phyla comparison overall and psd correlated.png", path = "./Graphs/",
        width = 12, height = 16, units = "cm")
+
+# class
+overall_bact_class <- count(BACT_TAX[rowSums(BACT_TAX[,6:ncol(BACT_TAX)]>0)>(0.5*329),], Class)
+cor_bact_class <- count(bact_otu_id, Class)
+bact_class <- full_join(overall_bact_class, cor_bact_class, by = "Class") %>%
+  filter(n.x > 10) %>%
+  mutate(Phylum = substring(Class, 5)) %>%
+  tidyr::gather(key = "key", value = "value", n.x,n.y) %>%
+  mutate(key = recode_factor(key, n.x = "Whole dataset", 
+                             n.y = "Correlated with particle size bin"))
+
+ggplot(bact_class, aes(x = reorder(Class, -value), y = value)) + 
+  geom_bar(stat = "identity") +
+  facet_wrap(~key, ncol = 1, scales = "free_y") + 
+  theme_bw() + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  labs(y = "Count", x = "Class")
+ggsave("Bact class comparison overall and psd correlated.png", path = "./Graphs/",
+       width = 20, height = 16, units = "cm")
 
 
 # Procrustes test ####
@@ -464,12 +492,12 @@ COR_FUNG_MER <- cbind(FUNG_RARE_MEAN2, F_PSD)
 # need to appear in 50% of sites
 COR_FUNG_MER <- na.omit(COR_FUNG_MER) # remove 30 sites
 COR_FUNG_MER <- COR_FUNG_MER[,colSums(COR_FUNG_MER>0)>(0.25*329)]
-dim(COR_FUNG_MER) #329 289
+dim(COR_FUNG_MER) #329 293
 
 cor_fung <- Hmisc::rcorr(as.matrix(COR_FUNG_MER), type = "spearman")
 
 colnames(COR_FUNG_MER)
-summary(cor_fung$r[1:175,176:289])
+summary(cor_fung$r[1:179,180:293])
 
 # limit to correlations with p value below bonferroni point
 n <- ncol(COR_FUNG_MER)
@@ -495,7 +523,7 @@ apply(cor2[,176:289], 2, function(x) length(x[x > 0]))
 cor_check <- cor2
 dimnames(cor_check) <- list(colnames(COR_FUNG_MER),colnames(COR_FUNG_MER))
 
-fung_w_match <- rowSums(cor_check[,176:289]) > 0
+fung_w_match <- rowSums(cor_check[,180:293]) > 0
 
 cor_check <- cor_check[fung_w_match, fung_w_match]
 dim(cor_check) #[1] 133 133

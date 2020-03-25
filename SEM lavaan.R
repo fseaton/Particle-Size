@@ -427,3 +427,13 @@ par(mfrow = c(1,1))
 
 
 aictab.lavaan(list(Fit4,Fit5,Fit6,Fit7, Fit8), c("Fit4","Fit5","Fit6","Fit7","Fit8"))
+
+Mod9 <- '
+CARB ~ PREC + ELEV + qD1 + HAB_INT
+C_B_PH_CACL2 ~ CARB + ELEV + qD1 + HAB_INT
+BACT ~ CARB + C_B_PH_CACL2 + qD1 + HAB_INT + PREC
+FUNG ~ BACT + qD1 + HAB_INT + PREC'
+Fit9 <- sem(Mod9, data=SEM_data)
+Fit9 <- lavaan.survey(Fit9, Srvy)
+
+summary(Fit9)
