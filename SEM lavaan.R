@@ -92,8 +92,8 @@ Fit1 <- lavaan.survey(Fit1, Srvy)
 summary(Fit1, standardized=TRUE, rsquare = TRUE)
 
 ## normality check ####
-source(***REMOVED***)
-source(***REMOVED***)
+source("P:/A2_PhDs/Fiona_Seaton/Training/SEM course/day2_materials/fitted_lavaan.R")
+source("P:/A2_PhDs/Fiona_Seaton/Training/SEM course/day2_materials/lavaan.modavg.R")
 Fit1_b <- sem(Mod1, data=SEM_data, meanstructure=T)
 Resid <- residuals_lavaan(Fit1_b)
 head(Resid)
